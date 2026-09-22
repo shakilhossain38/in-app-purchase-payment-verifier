@@ -1,49 +1,78 @@
-import { generateToken } from './jwt.js';
-import { decodeJWS } from './jws_to_data.js';
+import { execSync } from "child_process";
+import https from "https";
 
-// The transaction ID to query (from your example)
-const TRANSACTION_ID = '360003053412814'; 
-const ENVIRONMENT = 'Production'; // Change to 'Sandbox' if testing with sandbox transactions
-
-const API_BASE_URL = ENVIRONMENT === 'Production' 
-    ? 'https://api.storekit.itunes.apple.com' 
-    : 'https://api.storekit-sandbox.itunes.apple.com';
-
-async function fetchTransaction() {
-    try {
-        // 1. Generate the Bearer Token
-        const token = generateToken();
-        
-        const url = `${API_BASE_URL}/inApps/v1/transactions/${TRANSACTION_ID}`;
-        
-        // 2. Call Apple's App Store Server API
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Fail:\n', errorData);
-            return;
-        }
-
-        const data = await response.json();
-        
-        if (data && data.signedTransactionInfo) {
-            // 3. Decode the returned JWS string to readable JSON
-            const decodedTransaction = decodeJWS(data.signedTransactionInfo);
-            console.log('Success:\n', JSON.stringify(decodedTransaction, null, 2));
-        } else {
-            console.log('Unexpected response format:', data);
-        }
-        
-    } catch (error) {
-        console.error('Error:', error.message);
-    }
+// 1. Get Bearer Token from jwt.js
+function getBearerToken() {
+  try {
+    const token = execSync("node jwt.js").toString().trim();
+    return token;
+  } catch (error) {
+    console.error("Error generating token:", error);
+    process.exit(1);
+  }
 }
 
-// Execute the flow
-fetchTransaction();
+// 2. Call Apple API
+function fetchTransaction(token) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: "api.storekit.itunes.apple.com",
+      path: "/inApps/v1/transactions/360003053412814",
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = "";
+
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+
+      res.on("end", () => {
+        try {
+          const json = JSON.parse(data);
+          resolve(json);
+        } catch (err) {
+          reject("Invalid JSON response: " + data);
+        }
+      });
+    });
+
+    req.on("error", (e) => reject(e));
+    req.end();
+  });
+}
+
+// 3. Main flow
+async function main() {
+  const token = getBearerToken();
+  console.log("Bearer Token received");
+
+  try {
+    const response = await fetchTransaction(token);
+
+    if (!response.signedTransactionInfo) {
+      console.error("No signedTransactionInfo found");
+      console.log(response);
+      return;
+    }
+
+    const signedInfo = response.signedTransactionInfo;
+
+    console.log("JWS received, decoding...");
+
+    // 4. Pass to jws_to_data.js
+    // assuming jws_to_data.js accepts argument
+    execSync(`node jws_to_data.js "${signedInfo}"`, {
+      stdio: "inherit",
+    });
+
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+
+main();
