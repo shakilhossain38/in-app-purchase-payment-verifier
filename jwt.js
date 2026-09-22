@@ -4,7 +4,7 @@ import fs from 'fs';
 // ⚠️ Replace these with your actual Apple developer credentials
 const KEY_ID = 'YOUR_KEY_ID'; 
 const ISSUER_ID = 'YOUR_ISSUER_ID';
-const BUNDLE_ID = 'com.smartsohay.education'; // Based on your previous output
+const BUNDLE_ID = 'com.yourcompany.yourapp'; // Replace with your app's Bundle ID
 
 // Path to your downloaded private key from App Store Connect
 const PRIVATE_KEY_PATH = './AuthKey.p8'; 

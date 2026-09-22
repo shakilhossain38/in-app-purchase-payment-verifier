@@ -64,7 +64,7 @@ After running the command, you will get the decoded transaction data in JSON for
 {
   "transactionId": "360003053412814",
   "originalTransactionId": "360003053412814",
-  "bundleId": "com.smartsohay.education",
+  "bundleId": "com.yourcompany.yourapp",
   "productId": "275",
   "purchaseDate": 1776395809000,
   "originalPurchaseDate": 1776395809000,
